@@ -13,7 +13,7 @@ type ChartProps = {
   setSelected: Dispatch<SetStateAction<number | null>>;
   accessibilityLabel: string;
 };
-const LEFT = 74, RIGHT = 310, TOP = 14, BOTTOM = 160, WIDTH = 320;
+const LEFT = 40, RIGHT = 310, TOP = 14, BOTTOM = 160, WIDTH = 320;
 
 export function Chart({ points, display, accessibilityLabel, selected, setSelected }: ChartProps) {
   const { colors, styles: s } = useTheme();
