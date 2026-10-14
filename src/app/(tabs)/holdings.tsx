@@ -3,10 +3,11 @@ import { ScrollView, Text, View } from 'react-native';
 import { usePortfolio } from '../../state/PortfolioContext';
 import { summarize } from '../../domain/ledger';
 import { Chip, DataGate, DemoNote, Empty, HoldingRow, Screen } from '../../ui/components';
-import { styles as s } from '../../ui/theme';
+import { useTheme } from '../../ui/theme';
 import { money } from '../../ui/format';
 
 export default function Holdings() {
+  const { styles: s } = useTheme();
   const { data, scope, currency } = usePortfolio();
   const [filter, setFilter] = useState('All');
   const summary = data ? summarize(data, scope, currency) : null;
