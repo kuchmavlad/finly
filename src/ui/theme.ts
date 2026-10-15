@@ -1,6 +1,9 @@
+import { createContext, createElement, useContext, type ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
-export const colors = { bg: '#101917', panel: '#192420', elevated: '#24332C', line: '#2C3B32', text: '#F1F1E8', muted: '#A2B0A6', mint: '#BFE4C8', red: '#ECA69C', gold: '#E7C68E', lavender: '#C5B9E8' };
-export const styles = StyleSheet.create({
+const shared = { positive: '#A6DCB5', negative: '#F0A49C', warning: '#E7C68E', warningBorder: '#65573B', cash: '#89949F' };
+const colors = { bg: '#101113', panel: '#1D1F23', elevated: '#2D3036', line: '#3E424A', text: '#F2F3F5', muted: '#ADB2BC', accent: '#E5E7EB', comparison: '#A4B8DA', ...shared };
+type Palette = typeof colors;
+const makeStyles = (colors: Palette) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 32, gap: 24, width: '100%', maxWidth: 640, alignSelf: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
@@ -14,3 +17,14 @@ export const styles = StyleSheet.create({
   chip: { minHeight: 44, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 13, backgroundColor: colors.panel, justifyContent: 'center', alignItems: 'center' },
   input: { backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.line, borderRadius: 14, padding: 15, fontSize: 16, color: colors.text, minHeight: 52 },
 });
+
+const theme = { colors, styles: makeStyles(colors) };
+const ThemeContext = createContext<typeof theme | null>(null);
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  return createElement(ThemeContext.Provider, { value: theme }, children);
+}
+export function useTheme() {
+  const theme = useContext(ThemeContext);
+  if (!theme) throw new Error('Missing theme provider');
+  return theme;
+}

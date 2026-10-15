@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { usePortfolio } from '../state/PortfolioContext';
 import { Button, Chip, DemoNote } from '../ui/components';
-import { styles as s } from '../ui/theme';
+import { useTheme } from '../ui/theme';
 import type { DemoState } from '../domain/models';
 
 export default function Settings() {
+  const { styles: s } = useTheme();
   const { state, setState, reset, currency, setCurrency } = usePortfolio();
   const [confirmReset, setConfirmReset] = useState(false);
   return <ScrollView style={s.screen} contentContainerStyle={s.content}><View><Text style={s.title}>Make it yours.</Text><Text style={[s.muted, { marginTop: 8 }]}>Finly · Demo preview</Text></View>

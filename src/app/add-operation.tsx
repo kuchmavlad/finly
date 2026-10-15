@@ -5,9 +5,10 @@ import { usePortfolio } from '../state/PortfolioContext';
 import type { Currency, OperationKind, PortfolioId } from '../domain/models';
 import { parseAmount } from '../domain/ledger';
 import { Button, Chip, DemoNote, operationLabels } from '../ui/components';
-import { colors, styles as s } from '../ui/theme';
+import { useTheme } from '../ui/theme';
 
 export default function AddOperation() {
+  const { colors, styles: s } = useTheme();
   const { data, scope, setScope, add } = usePortfolio();
   const { assetId: initialAsset } = useLocalSearchParams<{ assetId?: string }>();
   const asset = data?.assets.find(a => a.id === initialAsset);
@@ -38,7 +39,7 @@ export default function AddOperation() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save. Please try again.'); }
     finally { inFlight.current = false; setSaving(false); }
   };
-  if (saved) return <View style={[s.screen, { justifyContent: 'center', padding: 24, gap: 24 }]}><Text style={[s.title, { color: colors.mint }]}>Operation added.</Text><Text style={s.muted}>Your demo balances and activity are updated. This entry lasts until the app reloads.</Text><Button title="View activity" onPress={() => router.replace('/activity')} /></View>;
+  if (saved) return <View style={[s.screen, { justifyContent: 'center', padding: 24, gap: 24 }]}><Text style={[s.title, { color: colors.positive }]}>Operation added.</Text><Text style={s.muted}>Your demo balances and activity are updated. This entry lasts until the app reloads.</Text><Button title="View activity" onPress={() => router.replace('/activity')} /></View>;
   return <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}><ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
     <DemoNote>DEMO ENTRY · Stored for this session only · No broker connection</DemoNote>
     <View style={{ gap: 10 }}><Text style={s.eyebrow}>Portfolio</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{data?.portfolios.map(p => <Chip key={p.id} title={p.name} active={portfolioId === p.id} onPress={() => { setPortfolioId(p.id); setAssetId(''); setCurrency(p.id === 'inzhur' || p.id === 'bonds' ? 'UAH' : 'USD'); }} />)}</View></View>
@@ -48,7 +49,7 @@ export default function AddOperation() {
     <View style={{ gap: 10 }}><Text style={s.eyebrow}>{isTrade ? 'Total settlement amount' : 'Amount'} · {operationCurrency}</Text><TextInput accessibilityLabel="Amount" style={s.input} value={amount} onChangeText={setAmount} placeholder="0.00" placeholderTextColor={colors.muted} keyboardType="decimal-pad" />{isTrade && <Text style={s.muted}>Total cash paid or received, not unit price. Include accrued interest for bonds. Add commissions separately as a Fee.</Text>}</View>
     {isTrade && <View style={{ gap: 10 }}><Text style={s.eyebrow}>Quantity · Whole units</Text><TextInput accessibilityLabel="Quantity" style={s.input} value={quantity} onChangeText={setQuantity} placeholder="10" placeholderTextColor={colors.muted} keyboardType="number-pad" /></View>}
     <View style={{ gap: 10 }}><Text style={s.eyebrow}>Date · YYYY-MM-DD</Text><TextInput accessibilityLabel="Operation date" style={s.input} value={date} onChangeText={setDate} placeholder="2026-10-13" placeholderTextColor={colors.muted} autoCapitalize="none" /><Text style={s.muted}>Demo window: Jan 1 – Oct 13, 2026.</Text></View>
-    {!!error && <Text accessibilityRole="alert" style={{ color: colors.red, lineHeight: 22 }}>{error}</Text>}
+    {!!error && <Text accessibilityRole="alert" style={{ color: colors.negative, lineHeight: 22 }}>{error}</Text>}
     <Button title={saving ? 'Saving…' : 'Save demo operation'} onPress={() => void submit()} disabled={saving || !data} />
   </ScrollView></KeyboardAvoidingView>;
 }

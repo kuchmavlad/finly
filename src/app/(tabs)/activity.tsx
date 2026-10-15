@@ -3,9 +3,10 @@ import { ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { usePortfolio } from '../../state/PortfolioContext';
 import { Button, Chip, DataGate, DemoNote, Empty, OperationRow, Screen } from '../../ui/components';
-import { styles as s } from '../../ui/theme';
+import { useTheme } from '../../ui/theme';
 
 export default function Activity() {
+  const { styles: s } = useTheme();
   const { data, scope } = usePortfolio();
   const [filter, setFilter] = useState('All');
   const operations = data?.operations.filter(o => (scope === 'all' || o.portfolioId === scope) && (filter === 'All' || filter === 'Income' && ['dividend', 'coupon'].includes(o.kind) || filter === 'Trades' && ['buy', 'sell'].includes(o.kind) || filter === 'Cash' && ['deposit', 'withdrawal', 'fee'].includes(o.kind))).slice().sort((a, b) => b.date.localeCompare(a.date)) ?? [];

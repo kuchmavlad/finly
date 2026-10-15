@@ -3,14 +3,23 @@ import { summarize } from './ledger.ts';
 
 export const HISTORY_DATES = ['2026-01-01', '2026-02-01', '2026-03-01', '2026-04-01', '2026-05-01', '2026-06-01', '2026-07-01', '2026-08-01', '2026-09-01', '2026-10-13'];
 const PRICE_PATH = [0.9, 0.92, 0.91, 0.94, 0.93, 0.96, 0.95, 0.98, 0.97, 1];
+// Interpolate only fictional demo valuations, including at operation dates.
+export function demoValuationAt(data: Dataset, date: string): Dataset {
+  const timestamp = Date.parse(date);
+  let lower = 0;
+  while (lower < HISTORY_DATES.length - 1 && Date.parse(HISTORY_DATES[lower + 1]) <= timestamp) lower++;
+  const upper = Math.min(lower + 1, HISTORY_DATES.length - 1);
+  const start = Date.parse(HISTORY_DATES[lower]), end = Date.parse(HISTORY_DATES[upper]);
+  const fraction = end === start ? 0 : Math.max(0, Math.min(1, (timestamp - start) / (end - start)));
+  const index = lower + fraction;
+  const priceFactor = PRICE_PATH[lower] + (PRICE_PATH[upper] - PRICE_PATH[lower]) * fraction;
+  return { ...data, assets: data.assets.map(asset => ({ ...asset,
+    priceMinor: asset.priceMinor === null ? null : Math.round(asset.priceMinor * priceFactor),
+    bond: asset.bond ? { ...asset.bond, cleanPriceBps: Math.round(asset.bond.cleanPriceBps * (0.98 + 0.02 * index / 9)), accruedMinor: Math.round(asset.bond.accruedMinor * index / 9) } : undefined,
+  })) };
+}
 export function valueHistory(data: Dataset, scope: PortfolioScope, currency: Currency): number[] {
-  return HISTORY_DATES.map((date, i) => {
-    const assets = data.assets.map(asset => ({ ...asset,
-      priceMinor: asset.priceMinor === null ? null : Math.round(asset.priceMinor * PRICE_PATH[i]),
-      bond: asset.bond ? { ...asset.bond, cleanPriceBps: Math.round(asset.bond.cleanPriceBps * (0.98 + 0.02 * i / 9)), accruedMinor: Math.round(asset.bond.accruedMinor * i / 9) } : undefined,
-    }));
-    return summarize({ ...data, assets }, scope, currency, date).valueMinor;
-  });
+  return HISTORY_DATES.map(date => summarize(demoValuationAt(data, date), scope, currency, date).valueMinor);
 }
 // Illustrative curves only. Not derived TWR/XIRR or licensed index market data.
 export const INDEX_SAMPLE = [0, 1.1, -1.6, 2.8, 1.4, 4.9, 4.2, 7.1, 6.4, 9.2];
