@@ -20,7 +20,12 @@ export function Chip({ title, active, onPress, disabled = false }: { title: stri
 export function Screen({ children, title, subtitle, controls = true, scroll = true }: { children: ReactNode; title: string; subtitle?: string; controls?: boolean; scroll?: boolean }) {
   const { styles: s } = useTheme();
   const header = <><View style={s.row}><View style={{ flex: 1 }}><Text style={s.title}>{title}</Text>{subtitle && <Text style={[s.muted, { marginTop: 5 }]}>{subtitle}</Text>}</View><Pressable accessibilityRole="button" accessibilityLabel="Open settings" onPress={() => router.push('/settings')} style={{ padding: 12 }}><Icon name="options-outline" /></Pressable></View>{controls && <ScopeControls />}</>;
-  return <SafeAreaView edges={['top']} style={s.screen}>{scroll ? <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">{header}{children}</ScrollView> : <View style={{ flex: 1 }}><View style={s.content}>{header}</View>{children}</View>}</SafeAreaView>;
+  return <SafeAreaView edges={['top']} style={s.screen}>{scroll ? <ScrollView
+    contentContainerStyle={s.content}
+    automaticallyAdjustKeyboardInsets
+    keyboardDismissMode="on-drag"
+    keyboardShouldPersistTaps="handled"
+  >{header}{children}</ScrollView> : <View style={{ flex: 1 }}><View style={s.content}>{header}</View>{children}</View>}</SafeAreaView>;
 }
 export function ScopeControls() {
   const { colors, styles: s } = useTheme();
