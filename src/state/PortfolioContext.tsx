@@ -2,8 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { createDemoRepository } from '../data/demo';
 import type { Currency, Dataset, DemoState, OperationInput, PortfolioScope } from '../domain/models';
 
-const repository = createDemoRepository();
 function usePortfolioState() {
+  const [repository] = useState(createDemoRepository);
   const [data, setData] = useState<Dataset | null>(null);
   const [scope, setScope] = useState<PortfolioScope>('all');
   const [currency, setCurrency] = useState<Currency>('USD');
@@ -16,12 +16,12 @@ function usePortfolioState() {
       const next = await repository.load();
       if (current === request.current) { setData(next); setState('ready'); }
     } catch { if (current === request.current) setState('error'); }
-  }, []);
+  }, [repository]);
   useEffect(() => {
     let active = true;
     repository.load().then(next => { if (active) { setData(next); setState('ready'); } }).catch(() => { if (active) setState('error'); });
     return () => { active = false; };
-  }, []);
+  }, [repository]);
   const add = async (input: OperationInput) => { setData(await repository.add(input)); };
   const reset = async () => { setData(await repository.reset()); setScope('all'); setState('ready'); };
   const displayedData = data && (state === 'missing' || state === 'stale') ? {

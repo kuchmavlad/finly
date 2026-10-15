@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Finly — Email confirmation</title>
+  <script>
+    // Read only the outcome. Do not retain, transmit or log authentication tokens.
+    const failed = new URLSearchParams(location.hash.slice(1)).has('error') || new URLSearchParams(location.search).has('error');
+    const confirmed = !failed && new URLSearchParams(location.hash.slice(1)).has('access_token');
+    history.replaceState(null, '', location.pathname);
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('title').textContent = failed ? 'This link could not be verified' : confirmed ? 'Email confirmed' : 'Return to Finly';
+      document.getElementById('message').textContent = failed
+        ? 'The link may have expired or already been used. Return to Finly and try signing in. If your email is still unconfirmed, request a new confirmation email.'
+        : 'Open Finly on your phone and sign in with your email and password. You can close this page.';
+    });
+  </script>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+    body { margin: 0; min-height: 100svh; display: grid; place-items: center; background: #101010; color: #f5f5f5; }
+    main { box-sizing: border-box; width: min(100%, 480px); padding: 32px; }
+    .brand { color: #a0a0a0; letter-spacing: .16em; font-size: 13px; }
+    h1 { font-size: 32px; line-height: 1.15; margin: 28px 0 16px; }
+    p { color: #bdbdbd; line-height: 1.6; }
+  </style>
+</head>
+<body><main><div class="brand">FINLY</div><h1 id="title">Return to Finly</h1><p id="message">Open Finly on your phone and sign in with your email and password. If your email is still unconfirmed, request a new confirmation email.</p></main></body>
+</html>
