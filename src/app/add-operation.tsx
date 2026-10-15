@@ -1,55 +1,48 @@
-import { useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
+import { Text, TextInput, View } from 'react-native';
+import { router } from 'expo-router';
 import { usePortfolio } from '../state/PortfolioContext';
-import type { Currency, OperationKind, PortfolioId } from '../domain/models';
-import { parseAmount } from '../domain/ledger';
-import { Button, Chip, DemoNote, operationLabels } from '../ui/components';
+import { Button, Chip, EmptyPortfolios, Notice, Screen } from '../ui/components';
 import { useTheme } from '../ui/theme';
+import type { CashKind } from '../domain/account';
 
 export default function AddOperation() {
-  const { colors, styles: s } = useTheme();
-  const { data, scope, setScope, add } = usePortfolio();
-  const { assetId: initialAsset } = useLocalSearchParams<{ assetId?: string }>();
-  const asset = data?.assets.find(a => a.id === initialAsset);
-  const [portfolioId, setPortfolioId] = useState<PortfolioId>(asset?.portfolioId ?? (scope === 'all' ? 'ibkr' : scope));
-  const [kind, setKind] = useState<OperationKind>(asset ? 'buy' : 'deposit');
-  const [assetId, setAssetId] = useState(asset?.id ?? '');
-  const [currency, setCurrency] = useState<Currency>(asset?.currency ?? (portfolioId === 'inzhur' || portfolioId === 'bonds' ? 'UAH' : 'USD'));
+  const { styles: s, colors } = useTheme();
+  const { portfolios, scope, pending, pendingReady, busy, mutationError, message, error, loading, store } = usePortfolio();
+  const [portfolioId, setPortfolioId] = useState(scope === 'all' ? '' : scope);
+  const [kind, setKind] = useState<CashKind>('deposit');
+  const [currency, setCurrency] = useState('USD');
   const [amount, setAmount] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [date, setDate] = useState(data?.asOf ?? '2026-10-13');
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const inFlight = useRef(false);
-  const needsAsset = ['buy', 'sell', 'dividend', 'coupon'].includes(kind);
-  const isTrade = ['buy', 'sell'].includes(kind);
-  const available = data?.assets.filter(a => a.portfolioId === portfolioId && (kind === 'coupon' ? !!a.bond : kind === 'dividend' ? !a.bond : true)) ?? [];
-  const selected = available.find(a => a.id === assetId);
-  const operationCurrency = needsAsset && selected ? selected.currency : currency;
-  const submit = async () => {
-    if (inFlight.current || !data) return;
-    inFlight.current = true; setSaving(true); setError('');
-    try {
-      if (isTrade && !/^\d+$/.test(quantity)) throw new Error('Enter a whole number of units.');
-      await add({ portfolioId, kind, currency: operationCurrency, amountMinor: parseAmount(amount), date, assetId: needsAsset ? assetId : undefined, quantity: isTrade ? Number(quantity) : undefined });
-      setScope(portfolioId);
-      setSaved(true);
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not save. Please try again.'); }
-    finally { inFlight.current = false; setSaving(false); }
+  const [date, setDate] = useState('');
+  const input = pending ?? { portfolioId, kind, currency, amount, date };
+  const locked = busy || !!pending || !pendingReady;
+  const save = async () => {
+    const saved = await store.save(input);
+    if (saved) { setAmount(''); setDate(''); }
+    else if (!store.getSnapshot().pending) {
+      // Keep restored values editable after a confirmed server rejection.
+      setPortfolioId(input.portfolioId); setKind(input.kind); setCurrency(input.currency);
+      setAmount(input.amount); setDate(input.date);
+    }
   };
-  if (saved) return <View style={[s.screen, { justifyContent: 'center', padding: 24, gap: 24 }]}><Text style={[s.title, { color: colors.positive }]}>Operation added.</Text><Text style={s.muted}>Your demo balances and activity are updated. This entry lasts until the app reloads.</Text><Button title="View activity" onPress={() => router.replace('/activity')} /></View>;
-  return <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}><ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-    <DemoNote>DEMO ENTRY · Stored for this session only · No broker connection</DemoNote>
-    <View style={{ gap: 10 }}><Text style={s.eyebrow}>Portfolio</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{data?.portfolios.map(p => <Chip key={p.id} title={p.name} active={portfolioId === p.id} onPress={() => { setPortfolioId(p.id); setAssetId(''); setCurrency(p.id === 'inzhur' || p.id === 'bonds' ? 'UAH' : 'USD'); }} />)}</View></View>
-    <View style={{ gap: 10 }}><Text style={s.eyebrow}>Operation</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{(Object.keys(operationLabels) as OperationKind[]).map(type => <Chip key={type} title={operationLabels[type]} active={kind === type} onPress={() => setKind(type)} />)}</View></View>
-    {needsAsset && <View style={{ gap: 10 }}><Text style={s.eyebrow}>Asset</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{available.map(a => <Chip key={a.id} title={a.symbol} active={assetId === a.id} onPress={() => setAssetId(a.id)} />)}</View>{available.length === 0 && <Text style={s.muted}>No eligible demo assets here. Choose another portfolio or operation type.</Text>}</View>}
-    {!needsAsset && <View style={{ flexDirection: 'row', gap: 8 }}>{(['USD', 'UAH'] as const).map(c => <Chip key={c} title={c} active={currency === c} onPress={() => setCurrency(c)} />)}</View>}
-    <View style={{ gap: 10 }}><Text style={s.eyebrow}>{isTrade ? 'Total settlement amount' : 'Amount'} · {operationCurrency}</Text><TextInput accessibilityLabel="Amount" style={s.input} value={amount} onChangeText={setAmount} placeholder="0.00" placeholderTextColor={colors.muted} keyboardType="decimal-pad" />{isTrade && <Text style={s.muted}>Total cash paid or received, not unit price. Include accrued interest for bonds. Add commissions separately as a Fee.</Text>}</View>
-    {isTrade && <View style={{ gap: 10 }}><Text style={s.eyebrow}>Quantity · Whole units</Text><TextInput accessibilityLabel="Quantity" style={s.input} value={quantity} onChangeText={setQuantity} placeholder="10" placeholderTextColor={colors.muted} keyboardType="number-pad" /></View>}
-    <View style={{ gap: 10 }}><Text style={s.eyebrow}>Date · YYYY-MM-DD</Text><TextInput accessibilityLabel="Operation date" style={s.input} value={date} onChangeText={setDate} placeholder="2026-10-13" placeholderTextColor={colors.muted} autoCapitalize="none" /><Text style={s.muted}>Demo window: Jan 1 – Oct 13, 2026.</Text></View>
-    {!!error && <Text accessibilityRole="alert" style={{ color: colors.negative, lineHeight: 22 }}>{error}</Text>}
-    <Button title={saving ? 'Saving…' : 'Save demo operation'} onPress={() => void submit()} disabled={saving || !data} />
-  </ScrollView></KeyboardAvoidingView>;
+  return <Screen title="Record cash movement" controls={false}>
+    <Text style={s.muted}>Deposits and withdrawals only. Amounts stay in their original currencies.</Text>
+    {error ? <><Notice text={error} /><Button title="Refresh server data" secondary disabled={loading} onPress={() => void store.refresh()} /></> : null}
+    {mutationError ? <Notice text={mutationError} /> : null}
+    {message ? <Text accessibilityRole="alert" style={s.muted}>{message}</Text> : null}
+    {!pendingReady && <Button title="Retry pending recovery" secondary onPress={() => void store.restorePending()} />}
+    {pending && <Notice text="This unfinished operation is locked to its original values. Retrying uses the same request ID and cannot duplicate it." />}
+    {portfolios?.length === 0 && !pending ? <EmptyPortfolios /> : <View style={s.card}>
+      <Text style={s.heading}>Portfolio</Text>
+      {!input.portfolioId && <Text style={s.muted}>Select the portfolio for this movement.</Text>}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{portfolios?.map(p => <Chip key={p.id} title={p.name} active={input.portfolioId === p.id} disabled={locked} onPress={() => setPortfolioId(p.id)} />)}</View>
+      {pending && !portfolios?.some(p => p.id === pending.portfolioId) && <Text style={s.muted}>Pending portfolio: {pending.portfolioId}</Text>}
+      <View style={{ flexDirection: 'row', gap: 8 }}>{(['deposit', 'withdrawal'] as const).map(value => <Chip key={value} title={value === 'deposit' ? 'Deposit' : 'Withdrawal'} active={input.kind === value} disabled={locked} onPress={() => setKind(value)} />)}</View>
+      <Text style={s.muted}>Currency code</Text><TextInput accessibilityLabel="Currency code" style={s.input} value={input.currency} onChangeText={value => setCurrency(value.toUpperCase())} autoCapitalize="characters" autoCorrect={false} maxLength={3} editable={!locked} />
+      <Text style={s.muted}>Amount</Text><TextInput accessibilityLabel="Amount" placeholder="0.00" placeholderTextColor={colors.muted} style={s.input} value={input.amount} onChangeText={setAmount} keyboardType="decimal-pad" editable={!locked} />
+      <Text style={s.muted}>Operation date · YYYY-MM-DD · No future dates</Text><TextInput accessibilityLabel="Operation date, YYYY-MM-DD" placeholder="YYYY-MM-DD" placeholderTextColor={colors.muted} style={s.input} value={input.date} onChangeText={setDate} maxLength={10} editable={!locked} />
+      <Button title={busy ? 'Saving…' : pending ? 'Retry pending operation' : 'Save cash movement'} disabled={busy || !pendingReady || !input.portfolioId || !input.amount || !input.date || !/^[A-Z]{3}$/.test(input.currency)} onPress={() => void save()} />
+    </View>}
+    <Button title="View activity" secondary onPress={() => router.replace('/activity')} />
+  </Screen>;
 }

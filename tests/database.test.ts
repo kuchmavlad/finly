@@ -22,6 +22,7 @@ test('pilot SQL: isolation, RPC validation, exact decimals, retries and private 
       create function storage.foldername(name text) returns text[] language sql immutable as $$ select string_to_array(name, '/') $$;
     `);
     await db.exec(await readFile(new URL('../supabase/migrations/20261015065115_pilot.sql', import.meta.url), 'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20261015165100_server_portfolios.sql', import.meta.url), 'utf8'));
     const alice = randomUUID(), bob = randomUUID();
     await db.query('insert into auth.users values ($1),($2)', [alice, bob]);
     const become = async (id: string) => {
@@ -41,6 +42,7 @@ test('pilot SQL: isolation, RPC validation, exact decimals, retries and private 
     await assert.rejects(cash(a, 'deposit', '101', '2023-01-01', request), /different values/);
     assert.equal((await db.query<{ amount: string }>('select * from public.list_cash_entries()')).rows[0].amount, '100.123456789012345678');
     await cash(a, 'withdrawal', '100', '2023-02-01');
+    assert.deepEqual((await db.query('select * from public.cash_balances()')).rows, [{ currency: 'USD', amount: '0.123456789012345678' }]);
     await assert.rejects(cash(a, 'withdrawal', '1', '2023-01-15'), /Insufficient/);
     await assert.rejects(cash(a, 'withdrawal', '1', '2023-03-01', randomUUID(), 'EUR'), /Insufficient/);
     for (const amount of ['NaN', 'Infinity', '1e2', '-1', '0', '0.0000000000000000001']) {
@@ -53,9 +55,14 @@ test('pilot SQL: isolation, RPC validation, exact decimals, retries and private 
     await become(bob);
     assert.equal((await db.query('select * from public.portfolios')).rows.length, 0);
     assert.equal((await db.query('select * from public.list_cash_entries()')).rows.length, 0);
+    assert.equal((await db.query('select * from public.cash_balances()')).rows.length, 0);
+    assert.equal((await db.query('select * from public.cash_entries_page()')).rows.length, 0);
+    await assert.rejects(db.query('select * from public.cash_balances($1)', [a]), /Portfolio unavailable/);
+    await assert.rejects(db.query('select * from public.cash_entries_page($1)', [a]), /Portfolio unavailable/);
     await assert.rejects(cash(a, 'deposit', '1', '2023-01-01'), /Portfolio unavailable/);
     const b = await portfolio();
     await cash(b, 'deposit', '10', '2023-01-01');
+    await assert.rejects(db.query('select amount from public.cash_entries'), /permission denied/);
     await db.exec('reset role');
     assert.equal((await db.query('select * from public.cash_entry_audit')).rows.length, 3);
     await assert.rejects(db.query(`insert into public.cash_entries(user_id,portfolio_id,request_id,kind,currency,amount,occurred_on)
@@ -68,5 +75,32 @@ test('pilot SQL: isolation, RPC validation, exact decimals, retries and private 
     await assert.rejects(db.query('select * from public.portfolios'), /permission denied/);
     await assert.rejects(db.query('select * from public.list_cash_entries()'), /permission denied/);
     await assert.rejects(db.query("select public.create_portfolio('No access')"), /permission denied/);
+    await assert.rejects(db.query('select * from public.cash_balances()'), /permission denied/);
+    await assert.rejects(db.query('select * from public.cash_entries_page()'), /permission denied/);
+
+    await become(alice);
+    const second = (await db.query<{ id: string }>("select public.create_portfolio('Other') as id")).rows[0].id;
+    await cash(second, 'deposit', '5.000000000000000001', '2023-01-01', randomUUID(), 'EUR');
+    // More than two pages, same date and timestamp: UUID is the stable final tie-breaker.
+    await db.exec('begin');
+    for (let i = 0; i < 105; i++) await cash(a, 'deposit', '1', '2023-03-01');
+    await db.exec('commit');
+    const all = (await db.query<{ currency: string; amount: string }>('select * from public.cash_balances()')).rows;
+    assert.deepEqual(all, [{ currency: 'EUR', amount: '5.000000000000000001' }, { currency: 'USD', amount: '105.123456789012345678' }]);
+    assert.deepEqual((await db.query('select * from public.cash_balances($1)', [second])).rows, [all[0]]);
+    type Row = { id: string; occurred_on: string; created_at: string; portfolio_id: string };
+    const ids: string[] = [];
+    let cursor: Row | undefined;
+    do {
+      const page = (await db.query<Row>('select * from public.cash_entries_page($1,null,$2,$3,$4)', [a, cursor?.occurred_on ?? null, cursor?.created_at ?? null, cursor?.id ?? null])).rows;
+      assert.ok(page.every(row => row.portfolio_id === a));
+      ids.push(...page.map(row => row.id));
+      cursor = page.length === 50 ? page[page.length - 1] : undefined;
+    } while (cursor);
+    assert.equal(ids.length, 107);
+    assert.equal(new Set(ids).size, 107);
+    assert.equal((await db.query("select * from public.cash_entries_page(null,'withdrawal')")).rows.length, 1);
+    await assert.rejects(db.query("select * from public.cash_entries_page(null,'trade')"), /Invalid cash filter/);
+    await assert.rejects(db.query("select * from public.cash_entries_page(null,null,'2023-01-01')"), /Incomplete cursor/);
   } finally { await db.close(); }
 });
