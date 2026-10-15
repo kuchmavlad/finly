@@ -6,7 +6,7 @@
 
 Этот раздел заменяет исторические описания demo-вкладок ниже.
 
-- На старте задачи рабочее дерево оказалось чистым, активной была develop с merge PR #6 (870cb17). Работа выполнена в codex/feature-server-portfolios; PR предназначен для develop, самостоятельного слияния нет.
+- На старте задачи рабочее дерево оказалось чистым, активной была develop с merge PR #6 (870cb17). Работа выполнена в codex/feature-server-portfolios; Создан draft PR #7 в develop: https://github.com/kuchmavlad/finly/pull/7 . Самостоятельного слияния нет.
 - Основные вкладки используют accountRepository и отдельный AccountStore на пользователя. Demo-данные не загружаются; старый asset-маршрут показывает недоступность актива.
 - Выбор портфеля включает серверные портфели, All portfolios и Create portfolio. Создание также доступно из пустого состояния и Settings → Manage portfolios.
 - Overview: Recorded cash balances отдельно по исходным валютам. Activity: сохранённые пополнения/выводы, фильтры и страницы по 50. /add-operation пишет на сервер; /account управляет портфелями через тот же store.
