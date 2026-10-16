@@ -17,6 +17,7 @@ function Navigation() {
     <Stack.Screen name="add-operation" options={{ title: 'Add operation', presentation: 'modal' }} />
     <Stack.Screen name="settings" options={{ title: 'Settings' }} />
     <Stack.Screen name="account" options={{ title: 'Account' }} />
+    <Stack.Screen name="import-preview" options={{ title: 'IBKR preview' }} />
     </Stack.Protected>
     <Stack.Protected guard={!session}>
       <Stack.Screen name="sign-in" options={{ headerShown: false }} />
