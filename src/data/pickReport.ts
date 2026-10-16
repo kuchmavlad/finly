@@ -1,5 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
-import { File, Paths } from 'expo-file-system';
+import { File } from 'expo-file-system';
 import { MAX_REPORT_BYTES, ReportError } from '../domain/ibkr/preview';
 
 export async function pickReport(): Promise<{ name: string; xml: string } | null> {
@@ -7,8 +7,8 @@ export async function pickReport(): Promise<{ name: string; xml: string } | null
   if (result.canceled) return null;
   const asset = result.assets[0];
   const file = new File(asset.uri);
-  // Only remove the picker-created cache copy, never the user's source document.
-  if (!file.uri.startsWith(Paths.cache.uri.replace(/\/$/, '') + '/')) throw new ReportError('Could not read a temporary copy of this report.');
+  // copyToCacheDirectory gives us a picker-owned copy to read and remove.
+  // Its URI need not share the textual prefix of FileSystem's cache URI (Expo Go).
   try {
     if (!/\.xml$/i.test(asset.name)) throw new ReportError('Choose an XML file.');
     if (file.size > MAX_REPORT_BYTES) throw new ReportError('Report exceeds 10 MiB. Export a shorter period.');
