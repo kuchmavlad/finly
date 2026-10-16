@@ -5,6 +5,7 @@ import { usePortfolio } from '../state/PortfolioContext';
 import { Button, Chip, EmptyPortfolios, Notice, Screen } from '../ui/components';
 import { useTheme } from '../ui/theme';
 import type { CashKind } from '../domain/account';
+import OperationDateField from '../ui/OperationDateField';
 
 export default function AddOperation() {
   const { styles: s, colors } = useTheme();
@@ -31,7 +32,7 @@ export default function AddOperation() {
     {mutationError ? <Notice text={mutationError} /> : null}
     {message ? <Text accessibilityRole="alert" style={s.muted}>{message}</Text> : null}
     {!pendingReady && <Button title="Retry pending recovery" secondary onPress={() => void store.restorePending()} />}
-    {pending && <Notice text="This unfinished operation is locked to its original values. Retrying uses the same request ID and cannot duplicate it." />}
+    {pending && !busy && <Notice text="This unfinished operation is locked to its original values. Retrying uses the same request ID and cannot duplicate it." />}
     {portfolios?.length === 0 && !pending ? <EmptyPortfolios /> : <View style={s.card}>
       <Text style={s.heading}>Portfolio</Text>
       {!input.portfolioId && <Text style={s.muted}>Select the portfolio for this movement.</Text>}
@@ -40,7 +41,8 @@ export default function AddOperation() {
       <View style={{ flexDirection: 'row', gap: 8 }}>{(['deposit', 'withdrawal'] as const).map(value => <Chip key={value} title={value === 'deposit' ? 'Deposit' : 'Withdrawal'} active={input.kind === value} disabled={locked} onPress={() => setKind(value)} />)}</View>
       <Text style={s.muted}>Currency code</Text><TextInput accessibilityLabel="Currency code" style={s.input} value={input.currency} onChangeText={value => setCurrency(value.toUpperCase())} autoCapitalize="characters" autoCorrect={false} maxLength={3} editable={!locked} />
       <Text style={s.muted}>Amount</Text><TextInput accessibilityLabel="Amount" placeholder="0.00" placeholderTextColor={colors.muted} style={s.input} value={input.amount} onChangeText={setAmount} keyboardType="decimal-pad" editable={!locked} />
-      <Text style={s.muted}>Operation date · YYYY-MM-DD · No future dates</Text><TextInput accessibilityLabel="Operation date, YYYY-MM-DD" placeholder="YYYY-MM-DD" placeholderTextColor={colors.muted} style={s.input} value={input.date} onChangeText={setDate} maxLength={10} editable={!locked} />
+      <Text style={s.muted}>Operation date · No future dates</Text>
+      <OperationDateField value={input.date} onChange={setDate} disabled={locked} />
       <Button title={busy ? 'Saving…' : pending ? 'Retry pending operation' : 'Save cash movement'} disabled={busy || !pendingReady || !input.portfolioId || !input.amount || !input.date || !/^[A-Z]{3}$/.test(input.currency)} onPress={() => void save()} />
     </View>}
     <Button title="View activity" secondary onPress={() => router.replace('/activity')} />

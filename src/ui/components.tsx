@@ -55,8 +55,8 @@ export function EmptyPortfolios() {
   return <View style={s.card}><Text style={s.heading}>No portfolios yet</Text><Text style={s.muted}>Create a portfolio for a broker, bank or another place where you keep investments.</Text><Button title="Create portfolio" onPress={() => router.push('/account')} /></View>;
 }
 export function PendingNotice() {
-  const { pending, pendingReady } = usePortfolio();
+  const { pending, pendingReady, busy } = usePortfolio();
   const { styles: s } = useTheme();
-  if (pendingReady && !pending) return null;
+  if (busy || (pendingReady && !pending)) return null;
   return <View style={s.card}><Text style={s.muted}>{pending ? 'A cash movement needs confirmation. Retry its original request safely.' : 'Checking for an unfinished cash movement.'}</Text><Button title="Review cash operation" secondary onPress={() => router.push('/add-operation')} /></View>;
 }
