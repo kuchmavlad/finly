@@ -3,7 +3,6 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PortfolioProvider } from '../state/PortfolioContext';
 import { ThemeProvider, useTheme } from '../ui/theme';
-import { ChartSelectionProvider } from '../state/ChartSelectionContext';
 import { AccountProvider, useAccount } from '../state/AccountContext';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -31,5 +30,5 @@ export default function RootLayout() {
 
 function SessionContent() {
   const { session } = useAccount();
-  return <PortfolioProvider key={session?.user.id ?? 'signed-out'}><ChartSelectionProvider><Navigation /></ChartSelectionProvider></PortfolioProvider>;
+  return <PortfolioProvider key={session?.user.id ?? 'signed-out'}><Navigation /></PortfolioProvider>;
 }

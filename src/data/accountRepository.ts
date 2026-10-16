@@ -1,29 +1,35 @@
 import { requireSupabase } from './supabase';
+import type { AccountPortfolio, CashBalance, CashCursor, CashEntry, CashFilter, CashInput, PortfolioScope } from '../domain/account';
 
-export interface AccountPortfolio { id: string; name: string }
-export interface CashEntry { id: string; portfolio_id: string; kind: 'deposit' | 'withdrawal'; currency: string; amount: string; occurred_on: string }
-
-export async function loadAccount() {
-  const client = requireSupabase();
-  const [portfolios, entries] = await Promise.all([
-    client.from('portfolios').select('id,name').order('created_at'),
-    client.rpc('list_cash_entries').limit(100),
-  ]);
-  if (portfolios.error) throw portfolios.error;
-  if (entries.error) throw entries.error;
-  return { portfolios: portfolios.data as AccountPortfolio[], entries: entries.data as CashEntry[] };
-}
-
-export async function createPortfolio(name: string) {
-  const { error } = await requireSupabase().rpc('create_portfolio', { p_name: name.trim() });
+export async function loadPortfolios(): Promise<AccountPortfolio[]> {
+  const { data, error } = await requireSupabase().from('portfolios').select('id,name').order('created_at').order('id');
   if (error) throw error;
+  return data;
 }
-
-export interface CashInput { requestId: string; portfolioId: string; kind: 'deposit' | 'withdrawal'; currency: string; amount: string; date: string }
-export async function addCashEntry(input: CashInput) {
-  const { error } = await requireSupabase().rpc('add_cash_entry', {
+export async function loadBalances(scope: PortfolioScope): Promise<CashBalance[]> {
+  const { data, error } = await requireSupabase().rpc('cash_balances', { p_portfolio_id: scope === 'all' ? null : scope });
+  if (error) throw error;
+  return data;
+}
+export async function loadCashPage(scope: PortfolioScope, filter: CashFilter, cursor: CashCursor | null = null): Promise<CashEntry[]> {
+  const { data, error } = await requireSupabase().rpc('cash_entries_page', {
+    p_portfolio_id: scope === 'all' ? null : scope, p_kind: filter === 'all' ? null : filter,
+    p_before_date: cursor?.occurred_on ?? null, p_before_created_at: cursor?.created_at ?? null,
+    p_before_id: cursor?.id ?? null,
+  });
+  if (error) throw error;
+  return data;
+}
+export async function createPortfolio(name: string): Promise<string> {
+  const { data, error } = await requireSupabase().rpc('create_portfolio', { p_name: name.trim() });
+  if (error) throw error;
+  return data;
+}
+export async function addCashEntry(input: CashInput): Promise<string> {
+  const { data, error } = await requireSupabase().rpc('add_cash_entry', {
     p_request_id: input.requestId, p_portfolio_id: input.portfolioId,
     p_kind: input.kind, p_currency: input.currency, p_amount: input.amount, p_date: input.date,
   });
   if (error) throw error;
+  return data;
 }
