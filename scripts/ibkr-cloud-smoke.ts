@@ -1,0 +1,48 @@
+// Emits a rollback-only SQL smoke test with synthetic data. No broker files or secrets.
+import { parsePreview } from '../src/domain/ibkr/preview.ts';
+import { cashReport, cashRow } from '../tests/fixtures/ibkr.ts';
+const xml = cashReport(cashRow('synthetic','10.000000000000000001'),'10.000000000000000001');
+const preview = await parsePreview(xml);
+console.log(`begin;
+do $smoke$
+declare a uuid := gen_random_uuid(); b uuid := gen_random_uuid(); pid uuid;
+  batch jsonb; result jsonb; req uuid := gen_random_uuid(); denied boolean;
+begin
+  insert into auth.users(id) values(a),(b);
+  perform set_config('request.jwt.claim.sub',a::text,true);
+  set local role authenticated;
+  pid := public.create_portfolio('IBKR synthetic smoke');
+  reset role;
+  set local role service_role;
+  batch := public.stage_ibkr_report(a,pid,$xml$${xml}$xml$,$json$${JSON.stringify(preview)}$json$::jsonb);
+  if batch->>'status'<>'ready' then raise exception 'Unexpected stage result'; end if;
+  reset role;
+  set local role authenticated;
+  result := public.confirm_ibkr_report((batch->>'id')::uuid,batch->>'digest',req);
+  if result->>'status'<>'applied' then raise exception 'Apply failed'; end if;
+  if public.confirm_ibkr_report((batch->>'id')::uuid,batch->>'digest',req)<>result then raise exception 'Retry differs'; end if;
+  if public.ibkr_report_records((batch->>'id')::uuid)->0->'postings'->0->>'amount'<>'10.000000000000000001' then raise exception 'Precision lost'; end if;
+  denied := false;
+  begin perform public.stage_ibkr_report(a,pid,'x','{}'); exception when insufficient_privilege then denied:=true; end;
+  if not denied then raise exception 'Client staging allowed'; end if;
+  denied := false;
+  begin perform 1 from ibkr_private.events; exception when insufficient_privilege then denied:=true; end;
+  if not denied then raise exception 'Direct events read allowed'; end if;
+  perform set_config('request.jwt.claim.sub',b::text,true);
+  if public.ibkr_report_history()<>'[]'::jsonb then raise exception 'History leaks'; end if;
+  denied:=false;
+  begin perform public.ibkr_report_status((batch->>'id')::uuid);
+    exception when raise_exception then if sqlerrm='REPORT_UNAVAILABLE' then denied:=true; else raise; end if; end;
+  if not denied then raise exception 'Foreign report visible'; end if;
+  reset role;
+  if (select count(*) from ibkr_private.events where user_id=a)<>1 then raise exception 'Duplicate event'; end if;
+  if (select sum(amount)::text from ibkr_private.postings where user_id=a)<>'10.000000000000000001' then raise exception 'Posting precision'; end if;
+  set local role anon;
+  denied:=false;
+  begin perform public.ibkr_report_history(); exception when insufficient_privilege then denied:=true; end;
+  if not denied then raise exception 'Anonymous read allowed'; end if;
+  reset role;
+end;
+$smoke$;
+rollback;
+select 'IBKR smoke passed; all synthetic rows rolled back' as result;`);

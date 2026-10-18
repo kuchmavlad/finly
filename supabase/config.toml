@@ -1,0 +1,7 @@
+project_id = "finly"
+
+[functions.ibkr-import]
+# The function verifies the bearer token with Auth.getUser before reading XML.
+# Gateway legacy-JWT verification is incompatible with modern publishable keys.
+verify_jwt = false
+entrypoint = "./functions/ibkr-import/index.ts"
