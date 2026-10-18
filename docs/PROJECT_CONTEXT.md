@@ -10,7 +10,7 @@
 - В облаке применены `20261018084534_ibkr_journal` и `20261018084801_ibkr_owner_cleanup`; Edge Function `ibkr-import` развёрнута. Проверка синтетическими SQL-записями полностью откатилась; HTTP без JWT отклонён 401. Пользовательские XML не загружались агентом. Инструкция и границы: [IBKR_SERVER_IMPORT.md](IBKR_SERVER_IMPORT.md).
 - Пользователь явно отменил backup gate: «давай без копии». Копии и проверки восстановления нет; не запрашивать её повторно для этого запуска. Это исключение заменяет прежнее требование ниже. CLI не авторизован, Docker/Podman нет.
 - TypeScript/lint, 58 тестов, Deno check, iOS/Hermes и web export проверены в ходе работы; финальные проверки отражаются в PR. SQL и store-тесты покрывают retry/stale/rollback/isolation/precision; две настоящие Auth-сессии, независимая concurrency-нагрузка и новый server-flow на iPhone не подтверждены. Локальные реальные XML: 11/7 событий, сверка cash точная, 7 unchanged.
-- PR направлять в develop, самостоятельно не сливать. Следующий пользовательский шаг: месячный XML → Check on server → Confirm, затем overlap и повтор; следить за явной разницей между journal и portfolio balances.
+- Открыт draft [PR #9](https://github.com/kuchmavlad/finly/pull/9) в develop; самостоятельно не сливать. Финальные TypeScript/lint, 58 тестов, Deno check, iOS/web прошли. Следующий пользовательский шаг: месячный XML → Check on server → Confirm, затем overlap и повтор; следить за явной разницей между journal и portfolio balances.
 
 ## Реализован локальный предпросмотр IBKR — 16 октября
 
