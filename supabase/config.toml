@@ -5,3 +5,12 @@ project_id = "finly"
 # Gateway legacy-JWT verification is incompatible with modern publishable keys.
 verify_jwt = false
 entrypoint = "./functions/ibkr-import/index.ts"
+
+[functions.ibkr-flex]
+verify_jwt = false
+entrypoint = "./functions/ibkr-flex/index.ts"
+
+[functions.ibkr-flex-worker]
+# Separate Vault scheduler credential is checked by the worker; no user JWT here.
+verify_jwt = false
+entrypoint = "./functions/ibkr-flex-worker/index.ts"

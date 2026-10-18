@@ -35,5 +35,6 @@ async function rpc<T>(owner: string, name: string, args?: Record<string,unknown>
 }
 export const importHistory = (owner: string) => rpc<ImportSummary[]>(owner,'ibkr_report_history');
 export const importStatus = (owner: string, reportId: string) => rpc<ImportSummary>(owner,'ibkr_report_status',{p_report_id:reportId});
+export const recheckImport = (owner: string, reportId: string) => rpc<ImportSummary>(owner,'recheck_ibkr_report',{p_report_id:reportId});
 export const importRecords = (owner: string, reportId: string, offset: number) => rpc<ImportRecord[]>(owner,'ibkr_report_records',{p_report_id:reportId,p_offset:offset});
 export const confirmImport = (owner: string, p: ImportPending) => rpc<ImportSummary>(owner,'confirm_ibkr_report',{p_report_id:p.reportId,p_digest:p.digest,p_request_id:p.requestId});

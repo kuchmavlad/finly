@@ -5,5 +5,5 @@
     "allowImportingTsExtensions": true,
     "types": ["react", "react-native", "node"]
   },
-  "exclude": ["node_modules", "supabase/functions/ibkr-import/index.ts"]
+  "exclude": ["node_modules", "supabase/functions/ibkr-import/index.ts", "supabase/functions/ibkr-flex/index.ts", "supabase/functions/ibkr-flex-worker/index.ts"]
 }

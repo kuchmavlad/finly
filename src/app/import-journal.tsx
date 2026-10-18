@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { randomUUID } from 'expo-crypto';
 import { useAccount } from '../state/AccountContext';
 import { usePortfolio } from '../state/PortfolioContext';
 import { ImportConfirmation } from '../state/importConfirmation';
 import { deviceStorage, pendingCashKey } from '../data/supabase';
-import { confirmImport, importHistory, importRecords, importStatus, stageImport } from '../data/importRepository';
+import { confirmImport, importHistory, importRecords, importStatus, stageImport, recheckImport } from '../data/importRepository';
 import { pickReport } from '../data/pickReport';
 import { ImportFailure, type ImportRecord, type ImportSummary } from '../domain/ibkr/import';
 import { exactAmount } from '../domain/account';
@@ -14,6 +14,7 @@ import { Button, Notice } from '../ui/components';
 import { useTheme } from '../ui/theme';
 
 export default function ImportJournal() {
+  const { reportId } = useLocalSearchParams<{reportId?:string}>();
   const { session } = useAccount(); const owner = session!.user.id;
   const { portfolios } = usePortfolio(); const { styles:s, colors } = useTheme();
   const [confirmation] = useState(() => new ImportConfirmation({storage:deviceStorage,
@@ -30,6 +31,11 @@ export default function ImportJournal() {
     live.current=true; void confirmation.restore();
     return () => { live.current=false; confirmation.dispose(); };
   },[confirmation]);
+  useEffect(()=>{
+    let current=true;
+    if(reportId) void importStatus(owner,reportId).then(value=>{if(current){setSelected(value);setRecords(null);setPage(0);}}).catch(()=>{if(current)setError('Could not load the synchronized report. Refresh saved reports.');});
+    return ()=>{current=false;};
+  },[owner,reportId]);
   const apply = async (summary?: ImportSummary) => {
     await confirmation.apply(summary);
     const result = confirmation.getSnapshot().result;
@@ -104,6 +110,7 @@ export default function ImportJournal() {
         {selected.issues.slice(0,30).map((issue,i)=><Text key={i} style={s.text}>{issue.location}: {issue.code}</Text>)}
         {selected.status==='applied' && <Text accessibilityRole="alert" style={s.text}>Saved to the IBKR journal. Overview balances remain separate.</Text>}
         {selected.status==='ready' && <Button title="Confirm and save to IBKR journal" disabled={lockedUi || !!pending.pending || !pending.ready} onPress={()=>void apply(selected)} />}
+        {selected.status!=='applied' && <Button title="Recheck saved report" secondary disabled={lockedUi || !!pending.pending || !pending.ready} onPress={()=>void run(async()=>{const value=await recheckImport(owner,selected.id);if(live.current){setSelected(value);setRecords(null);setPage(0);}})} />}
       </View>
       <View style={s.card}><Text style={s.heading}>Report cash reconciliation</Text>
         <Text style={s.muted}>Original currencies, full report period. These are report figures, not published portfolio balances.</Text>
