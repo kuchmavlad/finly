@@ -4,5 +4,6 @@
     "strict": true,
     "allowImportingTsExtensions": true,
     "types": ["react", "react-native", "node"]
-  }
+  },
+  "exclude": ["node_modules", "supabase/functions/ibkr-import/index.ts"]
 }

@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.117.3",
+    "saxes": "npm:saxes@6.0.0"
+  },
+  "compilerOptions": { "strict": true }
+}

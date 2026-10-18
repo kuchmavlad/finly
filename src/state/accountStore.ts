@@ -130,10 +130,12 @@ export class AccountStore {
       catch (failure) {
         if (!this.active) return false;
         if (failure && typeof failure === 'object' && 'code' in failure && failure.code === 'P0001'
-          && 'message' in failure && ['Invalid cash entry', 'Amount must be positive', 'Portfolio unavailable', 'Insufficient recorded cash'].includes(String(failure.message))) {
+          && 'message' in failure && ['Invalid cash entry', 'Amount must be positive', 'Portfolio unavailable', 'Insufficient recorded cash', 'IBKR_PORTFOLIO_READ_ONLY'].includes(String(failure.message))) {
           await this.deps.storage.removeItem(this.deps.pendingKey);
           this.update({ pending: null });
-          throw new Error('Entry rejected. Check the portfolio, date and recorded cash. Future dates and insufficient cash are not allowed.');
+          throw new Error(failure.message === 'IBKR_PORTFOLIO_READ_ONLY'
+            ? 'This portfolio is linked to IBKR. Use the import journal; manual cash cannot be recorded here.'
+            : 'Entry rejected. Check the portfolio, date and recorded cash. Future dates and insufficient cash are not allowed.');
         }
         throw failure;
       }

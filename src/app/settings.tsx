@@ -22,7 +22,8 @@ export default function Settings() {
   return <ScrollView style={s.screen} contentContainerStyle={s.content}><Text style={s.title}>Settings</Text>
     <Button title="Manage portfolios" secondary onPress={() => router.push('/account')} />
     <Button title="Preview IBKR reports" secondary onPress={() => router.push('/import-preview')} />
-    <View style={s.card}><Text style={s.heading}>About Finly</Text><Text style={s.muted}>Portfolios and cash movements are saved to your account. Cash balances use original currencies; currency conversion is not available yet.</Text><Text style={s.muted}>No broker is connected. Holdings, prices, imports and investment performance are not available yet.</Text></View>
+    <Button title="Import IBKR report" secondary onPress={() => router.push('/import-journal')} />
+    <View style={s.card}><Text style={s.heading}>About Finly</Text><Text style={s.muted}>Portfolios and cash movements are saved to your account. Cash balances use original currencies; currency conversion is not available yet.</Text><Text style={s.muted}>IBKR reports have a separate import journal. No broker is connected. Holdings, prices and investment performance are not available yet.</Text></View>
     <View style={{ marginTop: 16 }}>{error ? <Text accessibilityRole="alert" style={s.muted}>{error}</Text> : null}<Button title={signingOut ? 'Signing out…' : 'Sign out'} secondary disabled={signingOut} onPress={() => void signOut()} /></View>
   </ScrollView>;
 }

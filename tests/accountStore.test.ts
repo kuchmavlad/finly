@@ -34,6 +34,15 @@ test('decimal display and legacy pending retain precision', () => {
   assert.throws(() => parsePending('{}'));
 });
 
+test('manual cash rejection for an imported portfolio clears pending and explains the source', async () => {
+  const h = harness({ addCashEntry: async () => { throw { code: 'P0001', message: 'IBKR_PORTFOLIO_READ_ONLY' }; } });
+  await h.ready();
+  assert.equal(await h.store.save(draft), false);
+  assert.equal(h.store.getSnapshot().pending, null);
+  assert.equal(h.saved.size, 0);
+  assert.match(h.store.getSnapshot().mutationError, /linked to IBKR/);
+});
+
 test('double press sends one persisted request; success with failed refresh is still success', async () => {
   const write = deferred<string>();
   let sends = 0;

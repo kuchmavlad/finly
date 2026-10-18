@@ -1,6 +1,16 @@
 # Контекст Finly для продолжения в новом чате
 
-Обновлено: 16 октября 2026. Перед работой проверьте `git status`, текущую ветку и фактическое состояние PR: этот файл не заменяет Git.
+Обновлено: 18 октября 2026. Перед работой проверьте `git status`, текущую ветку и фактическое состояние PR: этот файл не заменяет Git.
+
+## Серверный журнал IBKR — 18 октября
+
+- PR #8 проверен слитым (merge `5f56657`); новая ветка `codex/feature-ibkr-server-import` создана от обновлённого origin/develop. Пользователь подтвердил локальный preview и Compare another XML на iPhone: 7 unchanged, остальные 0.
+- Реализован Settings → Import IBKR report: выбор пустого портфеля, явная отправка XML на server check, серверные counts/валидация/сверка, отдельное подтверждение, история и страницы операций. Raw XML сохраняется уже при Check on server; confirm сохраняет операции. Это отдельный source journal, не опубликованные остатки Overview/Activity и не доходность.
+- Общий parser для Expo/Edge, Auth.getUser до чтения XML, приватные таблицы с RLS, service-only staging, owner-scoped status/history/records/confirm. Numeric/decimal strings, immutable applied, hash/digest/revision, owner lock, identity/provenance, сохранённый pending с повтором без дублей. Manual overlap блокируется, mapped IBKR portfolio закрыт для manual cash.
+- В облаке применены `20261018084534_ibkr_journal` и `20261018084801_ibkr_owner_cleanup`; Edge Function `ibkr-import` развёрнута. Проверка синтетическими SQL-записями полностью откатилась; HTTP без JWT отклонён 401. Пользовательские XML не загружались агентом. Инструкция и границы: [IBKR_SERVER_IMPORT.md](IBKR_SERVER_IMPORT.md).
+- Пользователь явно отменил backup gate: «давай без копии». Копии и проверки восстановления нет; не запрашивать её повторно для этого запуска. Это исключение заменяет прежнее требование ниже. CLI не авторизован, Docker/Podman нет.
+- TypeScript/lint, 58 тестов, Deno check, iOS/Hermes и web export проверены в ходе работы; финальные проверки отражаются в PR. SQL и store-тесты покрывают retry/stale/rollback/isolation/precision; две настоящие Auth-сессии, независимая concurrency-нагрузка и новый server-flow на iPhone не подтверждены. Локальные реальные XML: 11/7 событий, сверка cash точная, 7 unchanged.
+- PR направлять в develop, самостоятельно не сливать. Следующий пользовательский шаг: месячный XML → Check on server → Confirm, затем overlap и повтор; следить за явной разницей между journal и portfolio balances.
 
 ## Реализован локальный предпросмотр IBKR — 16 октября
 
