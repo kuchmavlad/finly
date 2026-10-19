@@ -19,6 +19,7 @@ function Navigation() {
     <Stack.Screen name="account" options={{ title: 'Account' }} />
     <Stack.Screen name="import-preview" options={{ title: 'IBKR preview' }} />
     <Stack.Screen name="import-journal" options={{ title: 'IBKR import' }} />
+    <Stack.Screen name="ibkr-sync" options={{ title: 'IBKR sync' }} />
     </Stack.Protected>
     <Stack.Protected guard={!session}>
       <Stack.Screen name="sign-in" options={{ headerShown: false }} />

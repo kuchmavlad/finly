@@ -1,6 +1,10 @@
 # Supabase: серверный пилот Finly
 
+19 октября: дополнительно применена `20261019113550_ibkr_flex_history`; ibkr-flex v3 / ibkr-import v3 / ibkr-flex-worker v2. Закрытая месячная очередь и server reparse, без новых клиентских прав на XML/credentials. Ручной план с 2024-03-08 сохранён, не применяет операции. Подробности и фактические проверки — [IBKR_FLEX_SYNC.md](IBKR_FLEX_SYNC.md).
+
 Обновлено: 18 октября 2026. Проект: `jntgwwcgyzhgjhatozld`, регион eu-west-1.
+
+Flex: применена `20261018155813_ibkr_flex_sync.sql`, добавлены защищённые connection/status/worker RPC и Vault; подробности в [IBKR_FLEX_SYNC.md](IBKR_FLEX_SYNC.md). Настоящее чтение брокерской отчётности теперь разрешено пользователем, но ещё не проверено. Ежедневное расписание не включено; activation SQL отдельно от миграций. Токены вводятся в форме Finly, не в SQL/.env/чат. Cloud Vault smoke прошёл с rollback. Прежние утверждения об отсутствии поддержки подключения ниже относятся к предыдущему этапу.
 
 Серверный журнал IBKR развёрнут отдельно от manual balances: [инструкция и модель безопасности](IBKR_SERVER_IMPORT.md). Добавлены миграции `20261018084534_ibkr_journal.sql`, `20261018084801_ibkr_owner_cleanup.sql` и Edge Function `ibkr-import`. Старые `public.import_batches`/bucket не используются новым API; XML и snapshot сохраняются атомарно в закрытой схеме Postgres. Реальных импортов агент не выполнял.
 

@@ -1,5 +1,6 @@
 import { SaxesParser } from 'saxes';
 import { decimal, units } from './decimal.ts';
+import { coversCashPeriod } from './cashPeriod.ts';
 
 export const MAX_REPORT_BYTES = 10 * 1024 * 1024;
 const MAX_NODES = 20000;
@@ -14,7 +15,7 @@ export type PreviewEvent = {
 export type Preview = {
   account: string; from: string; to: string; events: PreviewEvent[]; issues: Issue[];
   sections: { name: string; count: number }[];
-  balances: { currency: string; starting: string; ending: string; movement: string; difference: string }[];
+  balances: { currency: string; starting: string; ending: string; movement: string; difference: string; from?:string; to?:string }[];
   totals: { kind: string; currency: string; amount: string }[];
 };
 export type Comparison = { statuses: ('new' | 'unchanged' | 'changed' | 'ambiguous')[]; removed: number };
@@ -133,8 +134,11 @@ function buildPreview(statement: Node): Preview {
         const money = (key: string) => units(required(a, key));
         if (kind === 'Trade') {
           if (a.levelOfDetail !== 'EXECUTION' || a.transactionType !== 'ExchTrade' || a.origTradeID || (a.origOrderID && a.origOrderID !== '0') || a.origTradeDate || (a.origTradePrice && units(a.origTradePrice) !== 0n) || (a.changeInPrice && units(a.changeInPrice) !== 0n) || (a.changeInQuantity && units(a.changeInQuantity) !== 0n)) throw new Error('UNSUPPORTED_TRADE');
-          // Only codes observed in the supplied samples are supported initially.
-          if (!['', 'IA', 'AFx'].includes(a.notes ?? '')) throw new Error('UNSUPPORTED_CODE');
+          // Fractional/principal and partial-execution notes do not change cash accounting.
+          // Keep cancellations, corrections and unknown combinations blocked.
+          const notes = a.notes ?? '';
+          const allowedNotes = a.assetCategory === 'STK' ? ['IA', 'FP', 'RP', 'P'] : ['AFx'];
+          if (notes && notes.split(';').some(code => !allowedNotes.includes(code))) throw new Error('UNSUPPORTED_CODE');
           date(required(a, 'settleDateTarget'));
           const qty = money('quantity'); const proceeds = money('proceeds'); const fee = money('ibCommission'); const taxes = money('taxes');
           money('tradePrice'); money('multiplier'); money('netCash');
@@ -179,15 +183,20 @@ function buildPreview(statement: Node): Preview {
     if (row.attrs.currency === 'BASE_SUMMARY') continue;
     try {
       const a = row.attrs; const cur = currency(required(a, 'currency'));
-      if (row.name !== 'CashReportCurrency' || a.accountId !== account || date(a.fromDate) !== from || date(a.toDate) !== to) throw new Error('INVALID_CASH_REPORT');
+      if (row.name !== 'CashReportCurrency' || a.accountId !== account) throw new Error('INVALID_CASH_REPORT');
+      const cashFrom=date(a.fromDate),cashTo=date(a.toDate);
+      if(!coversCashPeriod(from,to,cashFrom,cashTo,events.map(e=>e.date))) throw new Error('CASH_PERIOD_GAP');
       if (seen.has(cur)) throw new Error('DUPLICATE_CURRENCY'); seen.add(cur);
       const starting = units(required(a, 'startingCash')); const ending = units(required(a, 'endingCash')); const movement = sums.get(cur) ?? 0n;
       const difference = ending - starting - movement;
-      balances.push({ currency: cur, starting: decimal(starting), ending: decimal(ending), movement: decimal(movement), difference: decimal(difference) });
+      balances.push({ currency: cur, starting: decimal(starting), ending: decimal(ending), movement: decimal(movement), difference: decimal(difference),from:cashFrom,to:cashTo });
       if (difference !== 0n) issue('CASH_MISMATCH', 'CashReport');
-    } catch { issue('INVALID_CASH_REPORT', 'CashReport'); }
+    } catch(error) { issue(error instanceof Error && error.message==='CASH_PERIOD_GAP' ? 'CASH_PERIOD_GAP' : 'INVALID_CASH_REPORT', 'CashReport'); }
   }
-  if (!balances.length) issue('MISSING_BALANCES', 'CashReport');
+  if (!balances.length) {
+    const rows = sections.get('CashReport')?.children ?? [];
+    issue(rows.length > 0 && rows.every(row => row.attrs.currency === 'BASE_SUMMARY') ? 'BASE_SUMMARY_ONLY' : 'MISSING_BALANCES', 'CashReport');
+  }
   for (const cur of sums.keys()) if (!seen.has(cur)) issue('MISSING_CURRENCY_BALANCE', 'CashReport');
   return { account, from, to, events, issues, balances,
     totals: [...groups].map(([key, amount]) => { const [kind, currency] = JSON.parse(key) as string[]; return { kind, currency, amount: decimal(amount) }; }),

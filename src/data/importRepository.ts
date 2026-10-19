@@ -1,5 +1,6 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { requireSupabase } from './supabase';
+import { flexAction } from './flexRepository';
 import { ImportFailure, type ImportPending, type ImportRecord, type ImportSummary } from '../domain/ibkr/import';
 import { safeImportError } from '../../supabase/functions/_shared/ibkr/handler';
 
@@ -35,5 +36,9 @@ async function rpc<T>(owner: string, name: string, args?: Record<string,unknown>
 }
 export const importHistory = (owner: string) => rpc<ImportSummary[]>(owner,'ibkr_report_history');
 export const importStatus = (owner: string, reportId: string) => rpc<ImportSummary>(owner,'ibkr_report_status',{p_report_id:reportId});
+export const recheckImport = async (owner: string, reportId: string) => {
+  await flexAction(owner,{action:'recheck',reportId});
+  return importStatus(owner,reportId);
+};
 export const importRecords = (owner: string, reportId: string, offset: number) => rpc<ImportRecord[]>(owner,'ibkr_report_records',{p_report_id:reportId,p_offset:offset});
 export const confirmImport = (owner: string, p: ImportPending) => rpc<ImportSummary>(owner,'confirm_ibkr_report',{p_report_id:p.reportId,p_digest:p.digest,p_request_id:p.requestId});

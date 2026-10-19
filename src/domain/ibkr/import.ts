@@ -19,7 +19,7 @@ export function importMessage(code: string): string {
     INVALID_REPORT: 'The server could not validate this XML. Check it in the local preview.',
     LIMIT_EXCEEDED: 'The report exceeds import limits. Export a shorter period.',
     REPORT_UNAVAILABLE: 'This report is unavailable for the signed-in account.',
-    PREVIEW_STALE: 'Saved records changed. Choose the same XML and check it on the server again before confirming.',
+    PREVIEW_STALE: 'Saved records changed. Use Recheck saved report before confirming again.',
     REPORT_BLOCKED: 'This report has validation issues or changed records. Nothing was applied.',
     REVISION_CONFLICT: 'An existing operation changed. Nothing was applied; review the report.',
     REQUEST_CONFLICT: 'The confirmation ID conflicts with another request. Nothing was applied by this request.',
