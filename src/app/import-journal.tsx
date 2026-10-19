@@ -10,6 +10,7 @@ import { confirmImport, importHistory, importRecords, importStatus, stageImport,
 import { pickReport } from '../data/pickReport';
 import { ImportFailure, type ImportRecord, type ImportSummary } from '../domain/ibkr/import';
 import { exactAmount } from '../domain/account';
+import { importIssueMessage } from '../domain/ibkr/issueMessage';
 import { Button, Notice } from '../ui/components';
 import { useTheme } from '../ui/theme';
 
@@ -107,7 +108,7 @@ export default function ImportJournal() {
         <Text style={s.text}>New: {selected.newCount} · Unchanged: {selected.unchangedCount} · Changed: {selected.changedCount}</Text>
         <Text style={s.muted}>Compared with your saved IBKR journal. Existing identical operations are not added again. Missing operations are never deleted automatically.</Text>
         {selected.status==='blocked' && <Notice text="This report cannot be applied. Changed or unsupported operations need review; no operations from this report were added." />}
-        {selected.issues.slice(0,30).map((issue,i)=><Text key={i} style={s.text}>{issue.location}: {issue.code}</Text>)}
+        {selected.issues.slice(0,30).map((issue,i)=><Text key={i} style={s.text}>{issue.location}: {importIssueMessage(issue.code)} ({issue.code})</Text>)}
         {selected.status==='applied' && <Text accessibilityRole="alert" style={s.text}>Saved to the IBKR journal. Overview balances remain separate.</Text>}
         {selected.status==='ready' && <Button title="Confirm and save to IBKR journal" disabled={lockedUi || !!pending.pending || !pending.ready} onPress={()=>void apply(selected)} />}
         {selected.status!=='applied' && <Button title="Recheck saved report" secondary disabled={lockedUi || !!pending.pending || !pending.ready} onPress={()=>void run(async()=>{const value=await recheckImport(owner,selected.id);if(live.current){setSelected(value);setRecords(null);setPage(0);}})} />}

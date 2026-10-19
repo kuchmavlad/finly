@@ -6,6 +6,7 @@ import { usePortfolio } from '../state/PortfolioContext';
 import { flexAction, flexMessage, flexStatus, disconnectFlex, setFlexDaily, type FlexStatus } from '../data/flexRepository';
 import { Button, Notice } from '../ui/components';
 import { useTheme } from '../ui/theme';
+import { importIssueMessage } from '../domain/ibkr/issueMessage';
 
 export default function IbkrSync() {
   const {session}=useAccount(); const owner=session!.user.id;
@@ -60,7 +61,7 @@ export default function IbkrSync() {
       <Text style={s.muted}>Last received report: {date(status.lastReceivedAt)}</Text>
       {status.from&&<Text style={s.text}>Requested: {status.from} — {status.to}</Text>}
       {status.code&&<Notice text={flexMessage(status.code)}/>}
-      {status.state==='blocked'&&<Notice text={status.issues?.length?status.issues.map(i=>`${i.location}: ${flexMessage(i.code)}`).join('\n'):'The report contains changed or unsupported operations. Open review for details. Nothing was applied automatically.'}/>}
+      {status.state==='blocked'&&<Notice text={status.issues?.length?status.issues.map(i=>`${i.location}: ${importIssueMessage(i.code)}`).join('\n'):'The report contains changed or unsupported operations. Open review for details. Nothing was applied automatically.'}/>}
       <Button title={status.state==='queued'||status.state==='waiting'?'Resume sync':'Sync last 7 days'} disabled={busy||historyIncomplete} onPress={()=>void run(()=>flexAction(owner,{action:status.state==='queued'||status.state==='waiting'?'step':'start'}))}/>
       {status.reportId&&<Button title="Review report and confirm import" secondary disabled={busy} onPress={()=>router.push({pathname:'/import-journal',params:{reportId:status.reportId!}})}/>}
       <Text style={s.muted}>Daily retrieval: {status.dailyEnabled?'enabled':'off'}. Server scheduling is activated after the manual connection check. It never confirms operations.</Text>

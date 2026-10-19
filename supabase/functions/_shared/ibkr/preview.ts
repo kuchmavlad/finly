@@ -134,8 +134,11 @@ function buildPreview(statement: Node): Preview {
         const money = (key: string) => units(required(a, key));
         if (kind === 'Trade') {
           if (a.levelOfDetail !== 'EXECUTION' || a.transactionType !== 'ExchTrade' || a.origTradeID || (a.origOrderID && a.origOrderID !== '0') || a.origTradeDate || (a.origTradePrice && units(a.origTradePrice) !== 0n) || (a.changeInPrice && units(a.changeInPrice) !== 0n) || (a.changeInQuantity && units(a.changeInQuantity) !== 0n)) throw new Error('UNSUPPORTED_TRADE');
-          // Only codes observed in the supplied samples are supported initially.
-          if (!['', 'IA', 'AFx'].includes(a.notes ?? '')) throw new Error('UNSUPPORTED_CODE');
+          // Fractional/principal and partial-execution notes do not change cash accounting.
+          // Keep cancellations, corrections and unknown combinations blocked.
+          const notes = a.notes ?? '';
+          const allowedNotes = a.assetCategory === 'STK' ? ['IA', 'FP', 'RP', 'P'] : ['AFx'];
+          if (notes && notes.split(';').some(code => !allowedNotes.includes(code))) throw new Error('UNSUPPORTED_CODE');
           date(required(a, 'settleDateTarget'));
           const qty = money('quantity'); const proceeds = money('proceeds'); const fee = money('ibCommission'); const taxes = money('taxes');
           money('tradePrice'); money('multiplier'); money('netCash');
@@ -190,7 +193,10 @@ function buildPreview(statement: Node): Preview {
       if (difference !== 0n) issue('CASH_MISMATCH', 'CashReport');
     } catch(error) { issue(error instanceof Error && error.message==='CASH_PERIOD_GAP' ? 'CASH_PERIOD_GAP' : 'INVALID_CASH_REPORT', 'CashReport'); }
   }
-  if (!balances.length) issue('MISSING_BALANCES', 'CashReport');
+  if (!balances.length) {
+    const rows = sections.get('CashReport')?.children ?? [];
+    issue(rows.length > 0 && rows.every(row => row.attrs.currency === 'BASE_SUMMARY') ? 'BASE_SUMMARY_ONLY' : 'MISSING_BALANCES', 'CashReport');
+  }
   for (const cur of sums.keys()) if (!seen.has(cur)) issue('MISSING_CURRENCY_BALANCE', 'CashReport');
   return { account, from, to, events, issues, balances,
     totals: [...groups].map(([key, amount]) => { const [kind, currency] = JSON.parse(key) as string[]; return { kind, currency, amount: decimal(amount) }; }),
