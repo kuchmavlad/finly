@@ -1,5 +1,6 @@
 import { SaxesParser } from 'saxes';
 import { decimal, units } from './decimal.ts';
+import { coversCashPeriod } from './cashPeriod.ts';
 
 export const MAX_REPORT_BYTES = 10 * 1024 * 1024;
 const MAX_NODES = 20000;
@@ -14,7 +15,7 @@ export type PreviewEvent = {
 export type Preview = {
   account: string; from: string; to: string; events: PreviewEvent[]; issues: Issue[];
   sections: { name: string; count: number }[];
-  balances: { currency: string; starting: string; ending: string; movement: string; difference: string }[];
+  balances: { currency: string; starting: string; ending: string; movement: string; difference: string; from?:string; to?:string }[];
   totals: { kind: string; currency: string; amount: string }[];
 };
 export type Comparison = { statuses: ('new' | 'unchanged' | 'changed' | 'ambiguous')[]; removed: number };
@@ -179,13 +180,15 @@ function buildPreview(statement: Node): Preview {
     if (row.attrs.currency === 'BASE_SUMMARY') continue;
     try {
       const a = row.attrs; const cur = currency(required(a, 'currency'));
-      if (row.name !== 'CashReportCurrency' || a.accountId !== account || date(a.fromDate) !== from || date(a.toDate) !== to) throw new Error('INVALID_CASH_REPORT');
+      if (row.name !== 'CashReportCurrency' || a.accountId !== account) throw new Error('INVALID_CASH_REPORT');
+      const cashFrom=date(a.fromDate),cashTo=date(a.toDate);
+      if(!coversCashPeriod(from,to,cashFrom,cashTo,events.map(e=>e.date))) throw new Error('CASH_PERIOD_GAP');
       if (seen.has(cur)) throw new Error('DUPLICATE_CURRENCY'); seen.add(cur);
       const starting = units(required(a, 'startingCash')); const ending = units(required(a, 'endingCash')); const movement = sums.get(cur) ?? 0n;
       const difference = ending - starting - movement;
-      balances.push({ currency: cur, starting: decimal(starting), ending: decimal(ending), movement: decimal(movement), difference: decimal(difference) });
+      balances.push({ currency: cur, starting: decimal(starting), ending: decimal(ending), movement: decimal(movement), difference: decimal(difference),from:cashFrom,to:cashTo });
       if (difference !== 0n) issue('CASH_MISMATCH', 'CashReport');
-    } catch { issue('INVALID_CASH_REPORT', 'CashReport'); }
+    } catch(error) { issue(error instanceof Error && error.message==='CASH_PERIOD_GAP' ? 'CASH_PERIOD_GAP' : 'INVALID_CASH_REPORT', 'CashReport'); }
   }
   if (!balances.length) issue('MISSING_BALANCES', 'CashReport');
   for (const cur of sums.keys()) if (!seen.has(cur)) issue('MISSING_CURRENCY_BALANCE', 'CashReport');

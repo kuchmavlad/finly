@@ -6,7 +6,7 @@ type Rpc = (name:string,args:Record<string,unknown>)=>Promise<unknown>;
 type Deps = { authenticate:(token:string)=>Promise<string|null>; rpc:Rpc; transport?:typeof fetch };
 const cors = {'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version','Access-Control-Allow-Methods':'POST, OPTIONS'};
 const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store'}});
-const safeCodes=['INVALID_CONFIGURATION','MAPPED_PORTFOLIO_REQUIRED','SYNC_BUSY','NOT_CONFIGURED','LEASE_EXPIRED'];
+const safeCodes=['INVALID_CONFIGURATION','MAPPED_PORTFOLIO_REQUIRED','SYNC_BUSY','NOT_CONFIGURED','LEASE_EXPIRED','HISTORY_DATE_UNAVAILABLE','HISTORY_ALREADY_PLANNED','HISTORY_CONNECTION_LOCKED','HISTORY_IN_PROGRESS'];
 export function createFlexHandler(deps:Deps) {
   return async(request:Request):Promise<Response>=>{
     if(request.method==='OPTIONS') return new Response(null,{status:204,headers:cors});
@@ -32,6 +32,18 @@ export function createFlexHandler(deps:Deps) {
       if(input.action==='configure') {
         if(typeof input.token!=='string' || !/^\d{6,128}$/.test(input.token) || typeof input.queryId!=='string' || !/^\d{1,30}$/.test(input.queryId) || typeof input.portfolioId!=='string' || !/^[0-9a-f-]{36}$/i.test(input.portfolioId)) return reply({code:'INVALID_CONFIGURATION'},400);
         await deps.rpc('configure_ibkr_flex',{p_user_id:user,p_portfolio_id:input.portfolioId,p_token:input.token,p_query_id:input.queryId});
+      } else if(input.action==='recheck') {
+        if(typeof input.reportId!=='string' || !/^[0-9a-f-]{36}$/i.test(input.reportId)) return reply({code:'INVALID_CONFIGURATION'},400);
+        const source=await deps.rpc('ibkr_source_for_reparse',{p_user_id:user,p_report_id:input.reportId}) as {xml:string;portfolioId:string};
+        const preview=await parsePreview(source.xml);
+        await deps.rpc('restage_ibkr_source',{p_user_id:user,p_report_id:input.reportId,p_snapshot:preview});
+      } else if(input.action==='history' || input.action==='history-step') {
+        if(input.action==='history') {
+          if(typeof input.from!=='string' || !/^\d{4}-\d{2}-\d{2}$/.test(input.from)) return reply({code:'HISTORY_DATE_UNAVAILABLE'},400);
+          await deps.rpc('queue_ibkr_history',{p_user_id:user,p_start:input.from});
+        }
+        await deps.rpc('advance_ibkr_history',{p_user_id:user});
+        await flexStep(user,deps);
       } else if(input.action==='start' || input.action==='step') {
         if(input.action==='start') await deps.rpc('start_ibkr_flex',{p_user_id:user,p_origin:'manual'});
         await flexStep(user,deps);

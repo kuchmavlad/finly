@@ -116,6 +116,7 @@ export default function ImportJournal() {
         <Text style={s.muted}>Original currencies, full report period. These are report figures, not published portfolio balances.</Text>
         {selected.balances.map(b=><View key={b.currency} style={{gap:4}}>
           <Text style={s.heading}>{b.currency}</Text>
+          {b.from&&b.to&&<Text style={s.muted}>Cash statement dates: {b.from} — {b.to}{b.from!==selected.from||b.to!==selected.to?' · Weekend edges have no reported operations.':''}</Text>}
           <Text style={s.text}>Opening: {exactAmount(b.starting)} · Closing: {exactAmount(b.ending)}</Text>
           <Text style={s.text}>Movement: {exactAmount(b.movement)} · Difference: {exactAmount(b.difference)}</Text>
         </View>)}

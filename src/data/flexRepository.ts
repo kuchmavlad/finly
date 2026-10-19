@@ -1,8 +1,16 @@
 import { requireSupabase } from './supabase';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
-export type FlexStatus={configured:boolean;schedulerReady:boolean;portfolios:{id:string;account:string}[];portfolioId?:string;queryId?:string;state?:'idle'|'queued'|'waiting'|'review'|'blocked'|'error';code?:string|null;nextAttemptAt?:string;lastSuccessAt?:string|null;lastReceivedAt?:string|null;reportId?:string|null;from?:string;to?:string;dailyEnabled?:boolean;manualVerified?:boolean};
+export type HistoryPeriod={from:string;to:string;state:'pending'|'fetching'|'received'|'error';code:string|null;reportId:string|null;reviewStatus:'ready'|'blocked'|'applied'|null;issues:{code:string;location:string}[]|null};
+export type FlexStatus={configured:boolean;schedulerReady:boolean;history?:HistoryPeriod[];issues?:{code:string;location:string}[]|null;portfolios:{id:string;account:string}[];portfolioId?:string;queryId?:string;state?:'idle'|'queued'|'waiting'|'review'|'blocked'|'error';code?:string|null;nextAttemptAt?:string;lastSuccessAt?:string|null;lastReceivedAt?:string|null;reportId?:string|null;from?:string;to?:string;dailyEnabled?:boolean;manualVerified?:boolean};
 export const flexMessage=(code:string)=>({
+  HISTORY_DATE_UNAVAILABLE:'Enter a valid start date within the current year and four previous calendar years, before today.',
+  HISTORY_ALREADY_PLANNED:'A history plan already exists. Continue that plan; its date range is preserved.',
+  HISTORY_CONNECTION_LOCKED:'History is tied to this portfolio and query. You can replace the token using the same settings.',
+  HISTORY_IN_PROGRESS:'Finish retrieving the history plan before starting a weekly or daily sync.',
+  CASH_PERIOD_GAP:'Cash statement dates leave a gap or omit reported operations. This report cannot be confirmed.',
+  INVALID_CASH_REPORT:'Cash statement fields could not be validated. Open the report review for details.',
+  MISSING_BALANCES:'No valid currency balances were available for reconciliation.',
   TOKEN_EXPIRED:'Your Flex token expired. Generate a replacement in IBKR and save it here.',
   TOKEN_INVALID:'IBKR rejected the token. Check or replace it.', IP_RESTRICTED:'The token restricts server access by IP. Check its IBKR settings.',
   QUERY_INVALID:'Check the Activity Flex Query ID and XML configuration in IBKR.', RATE_LIMITED:'IBKR rate limit reached. The server will wait before retrying.',
